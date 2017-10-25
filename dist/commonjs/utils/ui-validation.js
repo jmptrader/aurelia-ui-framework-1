@@ -15,15 +15,15 @@ var UIValidationRenderer = (function () {
         for (var _i = 0, _a = instruction.unrender; _i < _a.length; _i++) {
             var _b = _a[_i], result = _b.result, elements = _b.elements;
             for (var _c = 0, elements_1 = elements; _c < elements_1.length; _c++) {
-                var element_1 = elements_1[_c];
-                this.remove(element_1, result);
+                var element = elements_1[_c];
+                this.remove(element, result);
             }
         }
         for (var _d = 0, _e = instruction.render; _d < _e.length; _d++) {
             var _f = _e[_d], result = _f.result, elements = _f.elements;
             for (var _g = 0, elements_2 = elements; _g < elements_2.length; _g++) {
-                var element_2 = elements_2[_g];
-                this.add(element_2, result);
+                var element = elements_2[_g];
+                this.add(element, result);
             }
         }
     };
@@ -37,6 +37,8 @@ var UIValidationRenderer = (function () {
             var vm = element.au.controller.viewModel;
             if (!vm.errors)
                 vm.errors = [];
+            if (~vm.errors.indexOf(result))
+                return;
             if (element.au.controller.viewModel && element.au.controller.viewModel instanceof ui_markdown_1.UILanguage) {
                 var ms = result.message.split('|');
                 vm.errors.push(result);
@@ -69,9 +71,9 @@ var UIValidationRenderer = (function () {
         }
         catch (E) { }
     };
+    UIValidationRenderer = __decorate([
+        aurelia_framework_1.autoinject()
+    ], UIValidationRenderer);
     return UIValidationRenderer;
 }());
-UIValidationRenderer = __decorate([
-    aurelia_framework_1.autoinject()
-], UIValidationRenderer);
 exports.UIValidationRenderer = UIValidationRenderer;

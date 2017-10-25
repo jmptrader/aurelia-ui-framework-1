@@ -50,29 +50,27 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
                 viewModel: vm,
                 container: this.container,
                 childContainer: this.container.createChild(),
-                model: model ? model : {}
+                model: model
             };
             return this.getViewModel(instruction)
-                .then(function (newInstruction) {
-                var viewModel = newInstruction.viewModel;
-                return _this.invokeLifecycle(viewModel, 'canActivate', model)
-                    .then(function (canActivate) {
-                    if (canActivate != false) {
-                        return _this.compositionEngine.createController(instruction)
-                            .then(function (controller) {
-                            controller.automate();
-                            var view = _this.createDialog(controller.viewModel);
-                            var childSlot = new aurelia_framework_2.ViewSlot(view['fragment'].querySelector('.ui-dialog'), true);
-                            childSlot.add(controller.view);
-                            childSlot.viewModel = controller.viewModel;
-                            childSlot.attached();
-                            var slot = new aurelia_framework_2.ViewSlot(ui_utils_1.UIUtils.dialogContainer, true);
-                            slot.add(view);
-                            slot.attached();
-                            _this.initializeDialog(controller.viewModel);
-                        });
-                    }
-                });
+                .then(function (newInstruction) { return _this.invokeLifecycle(newInstruction.viewModel, 'canActivate', model); })
+                .then(function (canActivate) {
+                return canActivate ?
+                    _this.compositionEngine.createController(instruction) :
+                    Promise.reject(false);
+            })
+                .then(function (controller) {
+                controller.automate();
+                var view = _this.createDialog(controller.viewModel);
+                var childSlot = new aurelia_framework_2.ViewSlot(view['fragment'].querySelector('.ui-dialog'), true);
+                childSlot.add(controller.view);
+                childSlot.viewModel = controller.viewModel;
+                childSlot.attached();
+                controller.viewModel["childSlot"] = childSlot;
+                var slot = new aurelia_framework_2.ViewSlot(ui_utils_1.UIUtils.dialogContainer, true);
+                slot.add(view);
+                slot.attached();
+                _this.initializeDialog(controller.viewModel);
             });
         };
         UIDialogService.prototype.close = function (id, force) {
@@ -94,8 +92,8 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             return view;
         };
         UIDialogService.prototype.initializeDialog = function (dialog) {
+            this.windows.push(dialog);
             if (!dialog.modal) {
-                this.windows.push(dialog);
                 dialog.taskButtonEl = document.createElement('button');
                 dialog.taskButtonEl.classList.add('ui-active');
                 dialog.taskButtonEl.innerHTML = '<ui-glyph class="${glyph}" glyph="${glyph}" if.bind="glyph"></ui-glyph><span class="ui-label">${title}</span>';
@@ -115,13 +113,14 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             this.invokeLifecycle(dialog, 'canDeactivate', force)
                 .then(function (canDeactivate) {
                 if (force || canDeactivate) {
-                    _this.invokeLifecycle(dialog, 'detached', null);
+                    dialog["childSlot"].detached();
                     dialog.dialogWrapperEl.remove();
                     _.remove(_this.windows, ['uniqId', dialog.uniqId]);
                     if (!dialog.modal) {
                         aurelia_framework_1.DOM.removeNode(dialog.taskButtonEl);
                         _this.nextActive();
                     }
+                    dialog["childSlot"].unbind();
                     _this.invokeLifecycle(dialog, 'unbind', null);
                     _this.invokeLifecycle(dialog, 'deactivate', null);
                 }
@@ -245,21 +244,21 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             var pw = ui_utils_1.UIUtils.dialogContainer.offsetWidth;
             var ph = ui_utils_1.UIUtils.dialogContainer.offsetHeight;
             if (!this.__isResizing) {
-                if (l + x < 16) {
+                if (l + x < 0) {
                     x = 0;
-                    l = 16;
+                    l = 0;
                 }
-                if (t + y < 16) {
+                if (t + y < 0) {
                     y = 0;
-                    t = 16;
+                    t = 0;
                 }
                 if (l + x + w + 16 > pw) {
                     x = 0;
                     l = pw - w - 16;
                 }
-                if (t + y + h + 42 > ph) {
+                if (t + y + h + 54 > ph) {
                     y = 0;
-                    t = ph - h - 42;
+                    t = ph - h - 54;
                 }
                 this.__dialog.style.top = (t + y) + 'px';
                 this.__dialog.style[this.__isRtl ? 'right' : 'left'] = (l + x) + 'px';
@@ -267,7 +266,7 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             else {
                 if (l + x + w + 16 > pw)
                     x = 0;
-                if (t + y + h + 42 > ph)
+                if (t + y + h + 54 > ph)
                     y = 0;
                 this.__dialog.style.width = (w + x) + 'px';
                 this.__dialog.style.height = (h + y) + 'px';
@@ -275,19 +274,19 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             this.__startX = x !== 0 ? ($event.x || $event.clientX) : this.__startX;
             this.__startY = y !== 0 ? ($event.y || $event.clientY) : this.__startY;
         };
+        UIDialogService = __decorate([
+            aurelia_framework_1.autoinject(),
+            aurelia_framework_2.singleton(),
+            __metadata("design:paramtypes", [aurelia_framework_2.ViewCompiler,
+                aurelia_framework_2.Container,
+                aurelia_framework_2.ViewResources,
+                aurelia_framework_2.CompositionEngine,
+                aurelia_framework_2.TemplatingEngine])
+        ], UIDialogService);
         return UIDialogService;
     }());
-    UIDialogService = __decorate([
-        aurelia_framework_1.autoinject(),
-        aurelia_framework_2.singleton(),
-        __metadata("design:paramtypes", [aurelia_framework_2.ViewCompiler,
-            aurelia_framework_2.Container,
-            aurelia_framework_2.ViewResources,
-            aurelia_framework_2.CompositionEngine,
-            aurelia_framework_2.TemplatingEngine])
-    ], UIDialogService);
     exports.UIDialogService = UIDialogService;
-    var UIDialog = UIDialog_1 = (function () {
+    var UIDialog = (function () {
         function UIDialog() {
             this.uniqId = "ui-win-" + UIDialog_1.seed++;
             this.isActive = true;
@@ -313,21 +312,29 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             this.minimizable = true;
             this.maximizable = true;
             this.closable = true;
+            this.maximized = false;
         }
+        UIDialog_1 = UIDialog;
         UIDialog.prototype.bind = function (bindingContext, overrideContext) {
             var isRtl = window.isRtl(ui_utils_1.UIUtils.dialogContainer);
-            if (!this.modal) {
-                this.posCurrent.top = (UIDialog_1.posY = UIDialog_1.posY == 240 ? 10 : UIDialog_1.posY + 30) + 'px';
-                this.posCurrent[isRtl ? 'right' : 'left'] = (UIDialog_1.posX = UIDialog_1.posY == 10 ? 60 : UIDialog_1.posX + 30) + 'px';
-            }
+            var pw = ui_utils_1.UIUtils.dialogContainer.offsetWidth;
+            var ph = ui_utils_1.UIUtils.dialogContainer.offsetHeight;
             this.posCurrent.width = this.width || this.minWidth || this.posCurrent.width;
             this.posCurrent.height = this.height || this.minHeight || this.posCurrent.height;
             this.posCurrent['min-width'] = this.minWidth || this.posCurrent['min-width'];
             this.posCurrent['min-height'] = this.minHeight || this.posCurrent['min-height'];
             this.posCurrent['max-width'] = this.maxWidth || this.posCurrent['max-width'];
             this.posCurrent['max-height'] = this.maxHeight || this.posCurrent['max-height'];
+            if (!this.modal) {
+                this.posCurrent.top = (UIDialog_1.posY = (UIDialog_1.posY + parseInt(this.posCurrent.height) + 32 > ph) ? 10 : UIDialog_1.posY + 30) + 'px';
+                this.posCurrent.left = this.posCurrent.right = (UIDialog_1.posX = (UIDialog_1.posX + parseInt(this.posCurrent.width) + 32 > pw) ? (UIDialog_1.seedX += 60) : UIDialog_1.posX + 30) + 'px';
+            }
             if (!this.id)
                 this.id = this.uniqId;
+        };
+        UIDialog.prototype.attached = function () {
+            if (this.maximized)
+                this.expand(null);
         };
         UIDialog.prototype.focus = function () {
             var _this = this;
@@ -377,14 +384,15 @@ define(["require", "exports", "aurelia-framework", "./ui-event", "./ui-utils", "
             config.container = this.dialogEl.querySelector('ui-dialog-body');
             ui_utils_1.UIUtils.toast(config);
         };
+        UIDialog.seed = 0;
+        UIDialog.seedX = 0;
+        UIDialog.posX = 0;
+        UIDialog.posY = 0;
+        UIDialog = UIDialog_1 = __decorate([
+            aurelia_framework_1.autoinject()
+        ], UIDialog);
         return UIDialog;
+        var UIDialog_1;
     }());
-    UIDialog.seed = 0;
-    UIDialog.posX = 0;
-    UIDialog.posY = 0;
-    UIDialog = UIDialog_1 = __decorate([
-        aurelia_framework_1.autoinject()
-    ], UIDialog);
     exports.UIDialog = UIDialog;
-    var UIDialog_1;
 });

@@ -93,8 +93,8 @@ export class UIInput extends UIBaseInput {
   // created(owningView: View, myView: View) { }
   bind(bindingContext: Object, overrideContext: Object) {
     super.bind.apply(this, arguments);
-    if (this.number) this.numberChanged(this.number);
-    if (this.decimal) this.decimalChanged(this.decimal);
+    if (!isNaN(this.number)) this.numberChanged(this.number);
+    if (!isNaN(this.decimal)) this.decimalChanged(this.decimal);
   }
   // attached() { }
   // detached() { }
@@ -108,7 +108,7 @@ export class UIInput extends UIBaseInput {
   @bindable() dir = '';
   @bindable() width = 'auto';
   @bindable() errors = null;
-  @bindable() maxlength = 99;
+  @bindable() maxlength = 1000;
   @bindable() disabled = false;
   @bindable() readonly = false;
   @bindable() info = '';
@@ -118,32 +118,28 @@ export class UIInput extends UIBaseInput {
   private clear = false;
   private counter = false;
 
-  private ignore = false;
-
   valueChanged(newValue) {
-    if (this.ignore) return;
-    this.ignore = true;
-    this.number = isNaN(parseFloat(newValue)) ? null : parseFloat(newValue);
-    this.decimal = isNaN(parseFloat(newValue)) ? null : parseFloat(newValue);
-    if (this.type === 'number' && this.number === null) this.inputEl.value = this.value = '';
-    setTimeout(() => this.ignore = false, 100);
+    if (this.type === 'number') {
+      let num = parseFloat(newValue);
+      this.number = isNaN(num) ? null : num;
+      this.decimal = isNaN(num) ? null : num;
+      if (this.number === null && this.decimal === null) {
+        this.value = '';
+      }
+    }
   }
+
   numberChanged(newValue) {
-    if (this.ignore) return;
-    this.ignore = true;
-    this.value = newValue == null ? '' : newValue;
-    setTimeout(() => this.ignore = false, 100);
+    this.value = newValue === null ? '' : newValue;
   }
+
   decimalChanged(newValue) {
-    if (this.ignore) return;
-    this.ignore = true;
-    this.value = newValue == null ? '' : newValue;
-    setTimeout(() => this.ignore = false, 100);
+    this.value = newValue === null ? '' : newValue;
   }
 
   fireEvent(evt) {
     if (evt.type === 'input') {
-      if (this.type === 'email' || this.type === 'url') this.value = this.value.toLowerCase();
+      if (this.type === 'email') this.value = this.value.toLowerCase();
     }
     super.fireEvent(evt);
   }
@@ -156,8 +152,6 @@ export class UIInput extends UIBaseInput {
     if (this.type == 'email') return /[a-zA-Z0-9\@\-\.\_\&\+\$]/.test(String.fromCharCode(code));
     if (this.type == 'url') return /[a-zA-Z0-9\/\-\.\_\?\#\%\=\$\;\:\{\[\]\}\&\+]/.test(String.fromCharCode(code));
     if (this.type == 'number') {
-      if (code == 45 && evt.target.value.indexOf('-') >= 0) return false;
-      if (code == 46 && evt.target.value.indexOf('.') >= 0) return false;
       return /[0-9\.\-]/.test(String.fromCharCode(code));
     }
     return true;

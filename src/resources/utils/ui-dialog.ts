@@ -3,12 +3,12 @@
 // @author      : Adarsh Pastakia
 // @copyright   : 2017
 // @license     : MIT
-import {autoinject, customElement, bindable, bindingMode, children, inlineView, useView, containerless, View, DOM} from 'aurelia-framework';
-import {UIEvent} from "./ui-event";
-import {UIUtils} from "./ui-utils";
+import { autoinject, customElement, bindable, bindingMode, children, inlineView, useView, containerless, View, DOM } from 'aurelia-framework';
+import { UIEvent } from "./ui-event";
+import { UIUtils } from "./ui-utils";
 import * as _ from "lodash";
 
-import {Origin} from "aurelia-metadata";
+import { Origin } from "aurelia-metadata";
 import {
   singleton,
   Container,
@@ -18,7 +18,7 @@ import {
   TemplatingEngine,
   ViewSlot
 } from "aurelia-framework";
-import {child} from "aurelia-templating";
+import { child } from "aurelia-templating";
 
 @autoinject()
 @singleton()
@@ -54,37 +54,39 @@ export class UIDialogService {
 
   show(vm, model?) {
     this.initialize();
-    let instruction: any = {
-      viewModel: vm,
-      container: this.container,
-      childContainer: this.container.createChild(),
-      model: model ? model : {}
-    };
+
+    let instruction: any =
+      {
+        viewModel: vm,
+        container: this.container,
+        childContainer: this.container.createChild(),
+        model: model
+      };
+
     return this.getViewModel(instruction)
-      .then(newInstruction => {
-        let viewModel: any = <any>newInstruction.viewModel;
-        return this.invokeLifecycle(viewModel, 'canActivate', model)
-          .then(canActivate => {
-            if (canActivate != false) {
-              return this.compositionEngine.createController(instruction)
-                .then(controller => {
-                  controller.automate();
+      .then(newInstruction => this.invokeLifecycle(newInstruction.viewModel, 'canActivate', model))
+      .then(canActivate => {
+        return canActivate ?
+          this.compositionEngine.createController(instruction) :
+          Promise.reject(false);
+      })
+      .then(controller => {
+        controller.automate();
 
-                  let view = this.createDialog(controller.viewModel);
+        let view = this.createDialog(controller.viewModel);
 
-                  let childSlot: any = new ViewSlot(view['fragment'].querySelector('.ui-dialog'), true);
-                  childSlot.add(controller.view);
-                  childSlot.viewModel = controller.viewModel;
-                  childSlot.attached();
+        let childSlot: any = new ViewSlot(view['fragment'].querySelector('.ui-dialog'), true);
+        childSlot.add(controller.view);
+        childSlot.viewModel = controller.viewModel;
+        childSlot.attached();
 
-                  let slot = new ViewSlot(UIUtils.dialogContainer, true);
-                  slot.add(view);
-                  slot.attached();
+        controller.viewModel["childSlot"] = childSlot;
 
-                  this.initializeDialog(controller.viewModel);
-                });
-            }
-          });
+        let slot = new ViewSlot(UIUtils.dialogContainer, true);
+        slot.add(view);
+        slot.attached();
+
+        this.initializeDialog(controller.viewModel);
       });
   }
 
@@ -117,9 +119,8 @@ export class UIDialogService {
   }
 
   private initializeDialog(dialog) {
+    this.windows.push(dialog);
     if (!dialog.modal) {
-      this.windows.push(dialog);
-
       dialog.taskButtonEl = document.createElement('button');
       dialog.taskButtonEl.classList.add('ui-active');
       dialog.taskButtonEl.innerHTML = '<ui-glyph class="${glyph}" glyph="${glyph}" if.bind="glyph"></ui-glyph><span class="ui-label">${title}</span>';
@@ -138,7 +139,10 @@ export class UIDialogService {
     this.invokeLifecycle(dialog, 'canDeactivate', force)
       .then(canDeactivate => {
         if (force || canDeactivate) {
-          this.invokeLifecycle(dialog, 'detached', null);
+          // this.invokeLifecycle(dialog.childSlot, 'detached', null);
+          // this.invokeLifecycle(dialog, 'detached', null);
+          dialog["childSlot"].detached();
+
           dialog.dialogWrapperEl.remove();
 
           _.remove(this.windows, ['uniqId', dialog.uniqId]);
@@ -147,6 +151,7 @@ export class UIDialogService {
             this.nextActive();
           }
 
+          dialog["childSlot"].unbind();
           this.invokeLifecycle(dialog, 'unbind', null);
           this.invokeLifecycle(dialog, 'deactivate', null);
         }
@@ -288,28 +293,28 @@ export class UIDialogService {
     let pw = UIUtils.dialogContainer.offsetWidth;
     let ph = UIUtils.dialogContainer.offsetHeight;
     if (!this.__isResizing) {
-      if (l + x < 16) {
+      if (l + x < 0) {
         x = 0;
-        l = 16;
+        l = 0;
       }
-      if (t + y < 16) {
+      if (t + y < 0) {
         y = 0;
-        t = 16;
+        t = 0;
       }
       if (l + x + w + 16 > pw) {
         x = 0;
         l = pw - w - 16;
       }
-      if (t + y + h + 42 > ph) {
+      if (t + y + h + 54 > ph) {
         y = 0;
-        t = ph - h - 42;
+        t = ph - h - 54;
       }
       this.__dialog.style.top = (t + y) + 'px';
       this.__dialog.style[this.__isRtl ? 'right' : 'left'] = (l + x) + 'px';
     }
     else {
       if (l + x + w + 16 > pw) x = 0;
-      if (t + y + h + 42 > ph) y = 0;
+      if (t + y + h + 54 > ph) y = 0;
 
       this.__dialog.style.width = (w + x) + 'px';
       this.__dialog.style.height = (h + y) + 'px';
@@ -325,10 +330,9 @@ export class UIDialog {
   // aurelia hooks
   bind(bindingContext?: Object, overrideContext?: Object) {
     let isRtl = window.isRtl(UIUtils.dialogContainer);
-    if (!this.modal) {
-      this.posCurrent.top = (UIDialog.posY = UIDialog.posY == 240 ? 10 : UIDialog.posY + 30) + 'px';
-      this.posCurrent[isRtl ? 'right' : 'left'] = (UIDialog.posX = UIDialog.posY == 10 ? 60 : UIDialog.posX + 30) + 'px';
-    }
+    let pw = UIUtils.dialogContainer.offsetWidth;
+    let ph = UIUtils.dialogContainer.offsetHeight;
+
     this.posCurrent.width = this.width || this.minWidth || this.posCurrent.width;
     this.posCurrent.height = this.height || this.minHeight || this.posCurrent.height;
     this.posCurrent['min-width'] = this.minWidth || this.posCurrent['min-width'];
@@ -336,11 +340,20 @@ export class UIDialog {
     this.posCurrent['max-width'] = this.maxWidth || this.posCurrent['max-width'];
     this.posCurrent['max-height'] = this.maxHeight || this.posCurrent['max-height'];
 
+    if (!this.modal) {
+      this.posCurrent.top = (UIDialog.posY = (UIDialog.posY + parseInt(this.posCurrent.height) + 32 > ph) ? 10 : UIDialog.posY + 30) + 'px';
+      this.posCurrent.left = this.posCurrent.right = (UIDialog.posX = (UIDialog.posX + parseInt(this.posCurrent.width) + 32 > pw) ? (UIDialog.seedX += 60) : UIDialog.posX + 30) + 'px';
+    }
+
     if (!this.id) this.id = this.uniqId;
+  }
+  attached() {
+    if (this.maximized) this.expand(null);
   }
   // end aurelia hooks
 
   static seed = 0;
+  static seedX = 0;
   static posX = 0;
   static posY = 0;
 
@@ -377,6 +390,7 @@ export class UIDialog {
   public minimizable: boolean = true;
   public maximizable: boolean = true;
   public closable: boolean = true;
+  public maximized: boolean = false;
 
   focus() {
     UIEvent.queueTask(() => {

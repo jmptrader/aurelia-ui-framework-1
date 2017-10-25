@@ -3,9 +3,9 @@
 // @author      : Adarsh Pastakia
 // @copyright   : 2017
 // @license     : MIT
-import {autoinject, customElement, bindable, bindingMode, children, inlineView, useView, containerless, View, DOM} from 'aurelia-framework';
-import {UIEvent} from "../../utils/ui-event";
-import {UIUtils} from "../../utils/ui-utils";
+import { autoinject, customElement, bindable, bindingMode, children, inlineView, useView, containerless, View, DOM } from 'aurelia-framework';
+import { UIEvent } from "../../utils/ui-event";
+import { UIUtils } from "../../utils/ui-utils";
 import * as _ from "lodash";
 
 export class BaseListInput {
@@ -132,14 +132,14 @@ export class BaseListInput {
     this.original = this.filtered = groups;
   }
 
-  valueChanged(newValue, onBind = false) {
+  valueChanged(newValue, oldValue?) {
     if (!this.isTagInput) {
       let item = _['findChildren'](this.filtered = this.original, 'items', 'value', newValue === null ? '' : newValue);
       this.elValue = item.text;
       if (!this.forceSelect && !this.elValue) this.elValue = newValue === null ? '' : newValue;
       else if (!this.elValue) this.value = '';
 
-      if (onBind && item.model) UIEvent.fireEvent('select', this.element, this.model = item.model);
+      if (!oldValue && item.model) UIEvent.fireEvent('select', this.element, this.model = item.model);
     }
     else {
       let v = (newValue || '').split(',');
@@ -162,9 +162,16 @@ export class BaseListInput {
   }
 
   scrollIntoView() {
-    let h = this.dropdown.querySelector('.ui-list-item.ui-hilight');
-    if (h == null) h = this.dropdown.querySelector('.ui-list-item.ui-selected');
-    this.dropdown.scrollTop = (h !== null ? h.offsetTop - (this.dropdown.offsetHeight / 2) : 0);
+    let h = this.dropdown.querySelector('.ui-list-item.ui-hilight') || this.dropdown.querySelector('.ui-list-item.ui-selected');
+
+    if (h !== null) {
+      //if not already in view
+      if (h.offsetTop < this.dropdown.scrollTop || h.offsetTop - this.dropdown.scrollTop > this.dropdown.clientHeight - 10)
+        this.dropdown.scrollTop = h.offsetTop - (this.dropdown.offsetHeight / 2);
+    }
+    else {
+      this.dropdown.scrollTop = 0;
+    }
   }
 
   openDropdown() {
@@ -195,7 +202,7 @@ export class BaseListInput {
     if (code == 13 && this.dropdown.isOpen) {
       if (this.hilight) this.hilight.click();
       if (!this.hilight && this.forceSelect) this.elValue = _['findChildren'](this.filtered = this.original, 'items', 'value', this.value).text;
-      if (!this.hilight && !this.forceSelect) this.fireChange();
+      // if (!this.hilight && !this.forceSelect) this.fireChange();
       this.closeDropdown();
       return false;
     }
@@ -263,6 +270,8 @@ export class BaseListInput {
     this.hilight = null;
     this.dropdown.scrollTop = 0;
 
+    //TODO: Add event/callback attribute to enable remote option filter
+
     let groups = [];
     let rx = new RegExp(getAscii(this.elValue), 'i');
     _.forEach(_.cloneDeep(this.original), (v, k) => {
@@ -289,8 +298,6 @@ export class BaseListInput {
     this.filtered = this.original;
     this.unhilightItem(null);
     this.inputEl.focus();
-    let h = this.dropdown.querySelector('.ui-list-item.ui-selected');
-    this.dropdown.scrollTop = (h !== null ? h.offsetTop - (this.dropdown.offsetHeight / 2) : 0);
   }
 
   fireChange() { }
@@ -303,12 +310,11 @@ export class BaseListInput {
   <span class="ui-error" if.bind="errors"><ui-glyph glyph="glyph-invalid"></ui-glyph><ul class="ui-error-list"><li repeat.for="err of errors" innerhtml.bind="err"></li></ul></span>
   <input ref="inputEl" value.bind="elValue" autocomplete="off" size="1"
     focus.trigger="fireEvent($event)" blur.trigger="fireEvent($event)" click.trigger="openDropdown($event)"
-    input.trigger="search() & debounce:200" change.trigger="fireEvent($event)"
+    input.trigger="search() & debounce:200" change.trigger="fireEvent($event)" select.trigger="$event.stopPropagation()"
     keydown.trigger="keyDown($event)" placeholder.bind="placeholder"
     disabled.bind="isDisabled" readonly.bind="!allowSearch || readonly"/>
   <span class="ui-clear" if.bind="clear && value" click.trigger="clearInput()">&times;</span>
   <span class="ui-input-addon ui-dropdown-handle" click.trigger="openDropdown($event, inputEl.focus())"><ui-glyph glyph="glyph-chevron-down"></ui-glyph></span></div>
-  <div class="ui-input-info" if.bind="info" innerhtml.bind="info"></div>
 
   <div class="ui-list-container ui-floating" ref="dropdown">
     <div if.bind="filtered.length==0" class="ui-list-group">\${emptyText}</div>
@@ -318,6 +324,7 @@ export class BaseListInput {
       <span class="\${iconClass} \${item.icon}" if.bind="item.icon"></span>&nbsp;<span innerhtml.bind="item.display"></span></div>
     </template>
   </div>
+  <div class="ui-input-info" if.bind="info" innerhtml.bind="info"></div>
 </template>`)
 @customElement('ui-combo')
 export class UICombo extends BaseListInput {
@@ -365,11 +372,12 @@ export class UICombo extends BaseListInput {
       UIEvent.fireEvent('select', this.element, model);
     }
     super.fireSelect(model);
+    this.fireChange();
     this.closeDropdown();
   }
 
   fireChange() {
-    UIEvent.fireEvent('change', this.element, this.value = this.elValue);
+    UIEvent.fireEvent('change', this.element, this.value);
   }
 }
 
@@ -379,7 +387,7 @@ export class UICombo extends BaseListInput {
   <span class="ui-error" if.bind="errors"><ui-glyph glyph="glyph-invalid"></ui-glyph><ul class="ui-error-list"><li repeat.for="err of errors" innerhtml.bind="err"></li></ul></span>
   <div class="ui-tag-item" repeat.for="tag of value | split" if.bind="tag!=''"><span innerhtml.bind="getDisplay(tag)"></span><i class="ui-clear" click.trigger="removeValue(tag)">&times;</i></div>
   <input ref="inputEl" value.bind="elValue" autocomplete="off" size="1"
-    focus.trigger="fireEvent($event)" blur.trigger="fireEvent($event)"
+    focus.trigger="fireEvent($event)" blur.trigger="fireEvent($event)" select.trigger="$event.stopPropagation()"
     input.trigger="search() & debounce:200" change.trigger="fireEvent($event)"
     keydown.trigger="keyDown($event)" placeholder.bind="placeholder"
     disabled.bind="isDisabled" readonly.bind="!allowSearch || readonly"/></div>
@@ -485,7 +493,7 @@ export class UITags extends BaseListInput {
   <input ref="inputEl" value.bind="elValue" class="ui-input ui-remove" autocomplete="off"
     focus.trigger="fireEvent($event)" blur.trigger="fireEvent($event)" size="1"
     input.trigger="search() & debounce:200" change.trigger="fireEvent($event)"
-    keydown.trigger="keyDown($event)" placeholder.bind="placeholder"
+    keydown.trigger="keyDown($event)" placeholder.bind="placeholder" select.trigger="$event.stopPropagation()"
     disabled.bind="isDisabled" readonly.bind="true"/>
   <span class="ui-clear" if.bind="clear && value" click.trigger="clearInput()">&times;</span>
 
@@ -546,11 +554,12 @@ export class UIList extends BaseListInput {
       this.value = model[this.valueProperty] == null ? model : model[this.valueProperty];
       UIEvent.fireEvent('select', this.element, model);
     }
+    this.fireChange();
     this.closeDropdown();
   }
 
   fireChange() {
-    UIEvent.fireEvent('change', this.element, this.value = this.elValue);
+    UIEvent.fireEvent('change', this.element, this.value);
   }
 }
 

@@ -100,6 +100,27 @@ let UIHttpService = class UIHttpService {
         })
             .then(resp => resp.text());
     }
+    blob(slug, headers = true) {
+        this.logger.info(`text [${slug}]`);
+        return this.httpClient
+            .fetch(slug, {
+            method: 'get',
+            mode: 'cors',
+            headers: this.__getHeaders(headers)
+        })
+            .then(resp => resp.blob());
+    }
+    patch(slug, obj, headers = true) {
+        this.logger.info(`patch [${slug}]`);
+        return this.httpClient
+            .fetch(slug, {
+            method: 'patch',
+            body: json(obj),
+            mode: 'cors',
+            headers: this.__getHeaders(headers)
+        })
+            .then(resp => this.__getResponse(resp));
+    }
     put(slug, obj, headers = true) {
         this.logger.info(`put [${slug}]`);
         return this.httpClient
@@ -181,12 +202,12 @@ let UIHttpService = class UIHttpService {
             'Access-Control-Allow-Origin': '*'
         };
         Object.assign(headers, UIConstants.Http.Headers || {});
-        if (override === true && UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
+        if (override !== false && UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
             var token = this.app.AuthUser + ":" + this.app.AuthToken;
             var hash = btoa(token);
             headers['Authorization'] = "Basic " + hash;
         }
-        else if (override !== false) {
+        if (typeof override == 'object') {
             Object.assign(headers, override || {});
         }
         return headers;

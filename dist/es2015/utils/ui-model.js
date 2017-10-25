@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { autoinject } from 'aurelia-framework';
+import { autoinject, transient } from 'aurelia-framework';
 import { getLogger } from "aurelia-logging";
 import { UIHttpService } from "./ui-http";
 import { UIEvent } from "./ui-event";
@@ -27,6 +27,11 @@ let UIModel = UIModel_1 = class UIModel {
                 writable: false,
                 enumerable: false
             },
+            'isDirtyProp': {
+                value: false,
+                writable: true,
+                enumerable: false
+            },
             '__observers__': {
                 value: [],
                 writable: true,
@@ -39,6 +44,13 @@ let UIModel = UIModel_1 = class UIModel {
             }
         });
         this.logger.info("Model Initialized");
+    }
+    init() {
+        this.saveChanges();
+        Object.keys(this)
+            .filter(UIModel_1.isPropertyForSerialization)
+            .forEach((key) => this.observe(key, () => this.isDirtyProp = this.isDirty()));
+        return this;
     }
     get(...rest) {
         throw new Error('Not implemented [get]');
@@ -67,9 +79,7 @@ let UIModel = UIModel_1 = class UIModel {
     deserialize(json) {
         this.__original__ = _.cloneDeep(json);
         Object.keys(this.__original__)
-            .forEach((key) => {
-            this[key] = json[key];
-        });
+            .forEach((key) => this[key] = json[key]);
     }
     serialize() {
         try {
@@ -82,59 +92,46 @@ let UIModel = UIModel_1 = class UIModel {
     static serializeObject(o) {
         let _pojo = {};
         if (o instanceof Map) {
-            o.forEach((obj, key) => {
-                if (obj instanceof UIModel_1) {
-                    _pojo[key] = obj.serialize();
-                }
-                if (_.isObject(obj)) {
-                    _pojo[key] = this.serializeObject(obj);
-                }
-                else if (_.isArray(obj)) {
-                    _pojo[key] = obj.join(',');
-                }
-                else {
-                    _pojo[key] = isEmpty(obj) ? null : obj;
-                }
-            });
+            o.forEach((obj, key) => _pojo[key] = UIModel_1.serializeProperty(obj));
         }
         else {
             Object.keys(o)
-                .forEach((key) => {
-                if (key !== 'undefined' && !/^__/.test(key)) {
-                    if (o[key] instanceof UIModel_1) {
-                        _pojo[key] = o[key].serialize();
-                    }
-                    if (_.isObject(o[key])) {
-                        _pojo[key] = this.serializeObject(o[key]);
-                    }
-                    else if (_.isArray(o[key])) {
-                        _pojo[key] = o[key].join(',');
-                    }
-                    else {
-                        _pojo[key] = isEmpty(o[key]) ? null : o[key];
-                    }
-                }
-            });
+                .filter(UIModel_1.isPropertyForSerialization)
+                .forEach((key) => _pojo[key] = UIModel_1.serializeProperty(o[key]));
         }
         return _pojo;
     }
+    static serializeProperty(p) {
+        if (p instanceof UIModel_1) {
+            return p.serialize();
+        }
+        else if (_.isObject(p)) {
+            return this.serializeObject(p);
+        }
+        else if (_.isArray(p)) {
+            return p.join(',');
+        }
+        else {
+            return isEmpty(p) ? null : p;
+        }
+    }
+    static isPropertyForSerialization(propName) {
+        return propName !== 'undefined' && propName !== "isDirtyProp" && !/^__/.test(propName);
+    }
     saveChanges() {
         this.__original__ = _.cloneDeep(this.serialize());
+        this.isDirtyProp = false;
     }
     discardChanges() {
         Object.keys(_.cloneDeep(this.__original__))
-            .forEach((key) => {
-            this[key] = this.__original__[key];
-        });
+            .forEach((key) => this[key] = this.__original__[key]);
     }
     isDirty() {
+        this.logger.info("Checking dirty");
         if (_.isEmpty(this.__original__)) {
             Object.keys(this)
-                .forEach((key) => {
-                if (key !== 'undefined' && !/^__/.test(key)) {
-                    this.__original__[key] = this[key];
-                }
-            });
+                .filter(UIModel_1.isPropertyForSerialization)
+                .forEach((key) => this.__original__[key] = this[key]);
         }
         return this.checkDirty(this.__original__, this);
     }
@@ -142,7 +139,7 @@ let UIModel = UIModel_1 = class UIModel {
         return !Object.keys(o)
             .every((key) => {
             if (t[key] instanceof UIModel_1)
-                return !t[key].isDirty();
+                return !t[key].isDirtyObject();
             if (_.isArray(o[key]) && o[key].length != t[key].length)
                 return false;
             if (_.isArray(o[key]) || _.isObject(o[key]))
@@ -153,6 +150,7 @@ let UIModel = UIModel_1 = class UIModel {
 };
 UIModel = UIModel_1 = __decorate([
     autoinject(),
+    transient(),
     __metadata("design:paramtypes", [])
 ], UIModel);
 export { UIModel };

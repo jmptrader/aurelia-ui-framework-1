@@ -56,6 +56,7 @@
 
     &.ui-modal {
       pointer-events: all;
+      padding       : 0.5em;
       z-index       : $z-index-dialog+10;
       background    : rgba(0,0,0,.05);
       @include flex-column(center, center);
@@ -66,11 +67,13 @@
       }
     }
 
+    &:not(.ui-modal) {
+      padding: 0.5em 0.5em 3em;
+    }
+
     .ui-dialog {
       pointer-events: all;
       position      : relative;
-      top           : 0;
-      left          : 0;
       background    : $base-bg;
       z-index       : $z-index-dialog;
       border-radius : $base-border-radius;
@@ -114,6 +117,7 @@
       &.ui-maximize {
         top   : 0 !important;
         left  : 0 !important;
+        right : 0 !important;
         width : 100% !important;
         height: 100% !important;
         @include transform(translateY(0%));
@@ -170,6 +174,10 @@
     right : 0;
     cursor: nwse-resize;
   }
+
+  .ui-dialog {
+    right: auto !important;
+  }
 }
 
 .rtl,
@@ -178,5 +186,9 @@
     left  : 0;
     cursor: nesw-resize;
     @include transform(scaleX(-1));
+  }
+
+  .ui-dialog {
+    left: auto !important;
   }
 }

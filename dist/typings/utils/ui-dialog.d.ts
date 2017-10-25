@@ -11,7 +11,7 @@ export declare class UIDialogService {
     constructor(compiler: ViewCompiler, container: Container, resources: ViewResources, compositionEngine: CompositionEngine, templatingEngine: TemplatingEngine);
     private initialize();
     makeActive(id: any): boolean;
-    show(vm: any, model?: any): Promise<any>;
+    show(vm: any, model?: any): Promise<void>;
     close(id: any, force?: any): boolean;
     closeAll(): void;
     private createDialog(vm);
@@ -37,7 +37,9 @@ export declare class UIDialogService {
 }
 export declare class UIDialog {
     bind(bindingContext?: Object, overrideContext?: Object): void;
+    attached(): void;
     static seed: number;
+    static seedX: number;
     static posX: number;
     static posY: number;
     private uniqId;
@@ -64,6 +66,7 @@ export declare class UIDialog {
     minimizable: boolean;
     maximizable: boolean;
     closable: boolean;
+    maximized: boolean;
     focus(): void;
     makeActive(): void;
     makeInactive(): void;

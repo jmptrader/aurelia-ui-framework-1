@@ -1,17 +1,22 @@
 export declare class UIPanel {
     element: Element;
     constructor(element: Element);
+    bind(bindingContext: Object, overrideContext: Object): void;
     height: string;
+    expanded: boolean;
+    collapsed: boolean;
+    beforeclose: any;
     close(): void;
     collapse(): void;
     expand(): void;
-    private collapsed;
+    restore(): void;
     private toggleCollapse();
 }
 export declare class UIPanelBody {
     element: Element;
     constructor(element: Element);
     height: string;
+    minheight: string;
     maxheight: string;
 }
 export declare class UIPanelGroup {

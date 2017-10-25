@@ -105,6 +105,30 @@ var UIHttpService = (function () {
         })
             .then(function (resp) { return resp.text(); });
     };
+    UIHttpService.prototype.blob = function (slug, headers) {
+        if (headers === void 0) { headers = true; }
+        this.logger.info("text [" + slug + "]");
+        return this.httpClient
+            .fetch(slug, {
+            method: 'get',
+            mode: 'cors',
+            headers: this.__getHeaders(headers)
+        })
+            .then(function (resp) { return resp.blob(); });
+    };
+    UIHttpService.prototype.patch = function (slug, obj, headers) {
+        var _this = this;
+        if (headers === void 0) { headers = true; }
+        this.logger.info("patch [" + slug + "]");
+        return this.httpClient
+            .fetch(slug, {
+            method: 'patch',
+            body: aurelia_fetch_client_1.json(obj),
+            mode: 'cors',
+            headers: this.__getHeaders(headers)
+        })
+            .then(function (resp) { return _this.__getResponse(resp); });
+    };
     UIHttpService.prototype.put = function (slug, obj, headers) {
         var _this = this;
         if (headers === void 0) { headers = true; }
@@ -196,22 +220,22 @@ var UIHttpService = (function () {
             'Access-Control-Allow-Origin': '*'
         };
         Object.assign(headers, ui_constants_1.UIConstants.Http.Headers || {});
-        if (override === true && ui_constants_1.UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
+        if (override !== false && ui_constants_1.UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
             var token = this.app.AuthUser + ":" + this.app.AuthToken;
             var hash = btoa(token);
             headers['Authorization'] = "Basic " + hash;
         }
-        else if (override !== false) {
+        if (typeof override == 'object') {
             Object.assign(headers, override || {});
         }
         return headers;
     };
+    UIHttpService = __decorate([
+        aurelia_framework_1.autoinject(),
+        __metadata("design:paramtypes", [aurelia_fetch_client_1.HttpClient,
+            ui_application_1.UIApplication,
+            aurelia_event_aggregator_1.EventAggregator])
+    ], UIHttpService);
     return UIHttpService;
 }());
-UIHttpService = __decorate([
-    aurelia_framework_1.autoinject(),
-    __metadata("design:paramtypes", [aurelia_fetch_client_1.HttpClient,
-        ui_application_1.UIApplication,
-        aurelia_event_aggregator_1.EventAggregator])
-], UIHttpService);
 exports.UIHttpService = UIHttpService;

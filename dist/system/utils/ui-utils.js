@@ -129,6 +129,19 @@ System.register(["aurelia-framework", "aurelia-metadata", "./ui-event"], functio
                     });
                 }
                 UIUtils.prompt = prompt;
+                function eventCallback(fn, self) {
+                    var rest = [];
+                    for (var _i = 2; _i < arguments.length; _i++) {
+                        rest[_i - 2] = arguments[_i];
+                    }
+                    var ret = fn.apply(self, rest);
+                    if (ret instanceof Promise)
+                        return ret;
+                    return new Promise(function (resolve, reject) {
+                        ret !== false ? resolve(true) : reject();
+                    });
+                }
+                UIUtils.eventCallback = eventCallback;
                 function tether(parent, child, opts) {
                     opts = Object.assign({ resize: true, position: 'bl' }, opts);
                     child.style.position = 'fixed';
@@ -218,8 +231,8 @@ System.register(["aurelia-framework", "aurelia-metadata", "./ui-event"], functio
                                     dd.style.transform += ' translateX(0)';
                                 }
                             }
+                            dd.style.transform += ' translateZ(0)';
                         };
-                        ;
                         var parent = el.parentElement;
                         do {
                             var cs = getComputedStyle(parent);

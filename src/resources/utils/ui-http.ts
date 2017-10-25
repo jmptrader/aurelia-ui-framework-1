@@ -3,12 +3,12 @@
 // @author      : Adarsh Pastakia
 // @copyright   : 2017
 // @license     : MIT
-import {autoinject, transient} from "aurelia-framework";
-import {getLogger} from "aurelia-logging";
-import {HttpClient, json} from "aurelia-fetch-client";
-import {EventAggregator} from "aurelia-event-aggregator";
-import {UIApplication} from "./ui-application";
-import {UIConstants} from "./ui-constants";
+import { autoinject, transient } from "aurelia-framework";
+import { getLogger } from "aurelia-logging";
+import { HttpClient, json } from "aurelia-fetch-client";
+import { EventAggregator } from "aurelia-event-aggregator";
+import { UIApplication } from "./ui-application";
+import { UIConstants } from "./ui-constants";
 
 @autoinject()
 export class UIHttpService {
@@ -106,6 +106,31 @@ export class UIHttpService {
       .then(resp => resp.text());
   }
 
+  blob(slug: string, headers: any = true): Promise<any | string | void> {
+    this.logger.info(`text [${slug}]`);
+    return this.httpClient
+      .fetch(slug,
+      {
+        method: 'get',
+        mode: 'cors',
+        headers: this.__getHeaders(headers)
+      })
+      .then(resp => resp.blob());
+  }
+
+  patch(slug: string, obj, headers: any = true): Promise<any | string | void> {
+    this.logger.info(`patch [${slug}]`);
+    return this.httpClient
+      .fetch(slug,
+      {
+        method: 'patch',
+        body: json(obj),
+        mode: 'cors',
+        headers: this.__getHeaders(headers)
+      })
+      .then(resp => this.__getResponse(resp));
+  }
+
   put(slug: string, obj, headers: any = true): Promise<any | string | void> {
     this.logger.info(`put [${slug}]`);
     return this.httpClient
@@ -198,12 +223,12 @@ export class UIHttpService {
     };
     Object.assign(headers, UIConstants.Http.Headers || {});
 
-    if (override === true && UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
+    if (override !== false && UIConstants.Http.AuthorizationHeader && !isEmpty(this.app.AuthUser)) {
       var token = this.app.AuthUser + ":" + this.app.AuthToken;
       var hash = btoa(token);
       headers['Authorization'] = "Basic " + hash;
     }
-    else if (override !== false) {
+    if (typeof override == 'object') {
       Object.assign(headers, override || {});
     }
     return headers;
